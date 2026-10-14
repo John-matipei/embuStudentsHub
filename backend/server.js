@@ -477,7 +477,13 @@ app.post("/api/chat", async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", service: "Embu Homes API", timestamp: new Date().toISOString() });
 });
-
+// Backend homepage
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    message: "Embu Students Hub backend is running!"
+  });
+});
 async function startServer() {
   try {
     await initDatabase();
