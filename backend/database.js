@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  ssl: false  // Disable SSL for FreeSQLDatabase
+  ssl: false
 });
 
 // Initialize database tables
@@ -17,7 +17,7 @@ async function initDatabase() {
   try {
     const connection = await pool.getConnection();
     
-    // Landlords table - using TIMESTAMP instead of DATETIME
+    // Landlords table - only ONE TIMESTAMP with CURRENT_TIMESTAMP
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS landlords (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -30,7 +30,7 @@ async function initDatabase() {
         login_attempts INT DEFAULT 0,
         last_login TIMESTAMP NULL DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT NULL,
         ip_address VARCHAR(45),
         user_agent TEXT
       )
@@ -46,7 +46,8 @@ async function initDatabase() {
         user_agent TEXT,
         success TINYINT(1),
         details TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT NULL
       )
     `);
     
@@ -72,7 +73,7 @@ async function initDatabase() {
         image LONGTEXT,
         amenities TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT NULL
       )
     `);
     
@@ -90,7 +91,7 @@ async function initDatabase() {
         student_id VARCHAR(100),
         status ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT NULL
       )
     `);
     
