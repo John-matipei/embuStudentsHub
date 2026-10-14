@@ -5,9 +5,13 @@ const pool = mysql.createPool({
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'embu_homes',
+  port: process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: process.env.DB_HOST ? {
+    rejectUnauthorized: false
+  } : false
 });
 
 // Initialize database tables
@@ -15,26 +19,26 @@ async function initDatabase() {
   try {
     const connection = await pool.getConnection();
     
-    // Landlords table with password tracking
+    // Landlords table - using TIMESTAMP instead of DATETIME
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS landlords (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(191) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         phone VARCHAR(50),
         name VARCHAR(255),
-        is_default_account BOOLEAN DEFAULT FALSE,
-        password_changed BOOLEAN DEFAULT FALSE,
+        is_default_account TINYINT(1) DEFAULT 0,
+        password_changed TINYINT(1) DEFAULT 0,
         login_attempts INT DEFAULT 0,
-        last_login DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        last_login TIMESTAMP NULL DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         ip_address VARCHAR(45),
         user_agent TEXT
       )
     `);
     
-    // Security logs table for tracking hackers
+    // Security logs table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS security_logs (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -42,14 +46,13 @@ async function initDatabase() {
         action VARCHAR(100) NOT NULL,
         ip_address VARCHAR(45),
         user_agent TEXT,
-        success BOOLEAN,
+        success TINYINT(1),
         details TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (landlord_id) REFERENCES landlords(id) ON DELETE SET NULL
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
-    // Houses table (replace in-memory storage)
+    // Houses table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS houses (
         id VARCHAR(100) PRIMARY KEY,
@@ -65,14 +68,13 @@ async function initDatabase() {
         bathrooms INT DEFAULT 1,
         water VARCHAR(50),
         electricity VARCHAR(50),
-        furnished BOOLEAN DEFAULT FALSE,
+        furnished TINYINT(1) DEFAULT 0,
         description TEXT,
         phone VARCHAR(50),
         image LONGTEXT,
-        amenities JSON,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (landlord_id) REFERENCES landlords(id) ON DELETE CASCADE
+        amenities TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
     
@@ -89,9 +91,8 @@ async function initDatabase() {
         message TEXT,
         student_id VARCHAR(100),
         status ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE CASCADE
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
     
