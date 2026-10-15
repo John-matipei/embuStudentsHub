@@ -5,7 +5,8 @@ import {
   Route,
 } from "react-router-dom";
 import ChangePassword from "./pages/ChangePassword";
-
+import AdminLogin from "./pages/adminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
 
 import Navbar from "./components/Navbar";
 import AIChatAgent from "./components/AIChatAgent";
@@ -189,10 +190,22 @@ export default function App() {
                   <AddHouse onSaved={refreshHouses} />
                 }
               />
+
               <Route
-  path="/landlord/change-password"
-  element={<ChangePassword />}
-/>
+                path="/landlord/change-password"
+                element={<ChangePassword />}
+              />
+
+              {/* Admin Routes */}
+              <Route
+                path="/admin/login"
+                element={<AdminLogin />}
+              />
+
+              <Route
+                path="/admin"
+                element={<AdminDashboard />}
+              />
 
               <Route
                 path="*"
