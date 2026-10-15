@@ -119,7 +119,7 @@ export default function App() {
               <p style={{ color: "#68736c", marginBottom: "25px" }}>{error}</p>
               <div style={{ marginBottom: "20px" }}>
                 <p style={{ fontSize: "14px", color: "#89938d" }}>
-                  Make sure your backend server is running:
+                  Please try again after a few minutes. :
                 </p>
                 <code style={{ 
                   display: "inline-block", 
@@ -129,7 +129,7 @@ export default function App() {
                   marginTop: "10px",
                   fontSize: "13px"
                 }}>
-                  node server.js
+                  Thank you for your patience. We are working to resolve the issue.
                 </code>
               </div>
               <button 
