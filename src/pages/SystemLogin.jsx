@@ -3,7 +3,7 @@ import { Shield, LockKeyhole, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { loginLandlord } from "../services/api";
 
-export default function AdminLogin() {
+export default function SystemLogin(){
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,9 +26,9 @@ export default function AdminLogin() {
         setError("Access denied. Admin only.");
         localStorage.clear();
         setIsLoading(false);
-        return;
+        return; 
       }
-      
+    
       // Store auth data
       localStorage.setItem("esh_token", result.token);
       localStorage.setItem("esh_landlord_email", result.landlord.email);

@@ -5,7 +5,7 @@ import {
   Route,
 } from "react-router-dom";
 import ChangePassword from "./pages/ChangePassword";
-import AdminLogin from "./pages/adminLogin";
+import SystemLogin from "./pages/SystemLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 
 import Navbar from "./components/Navbar";
@@ -35,7 +35,6 @@ export default function App() {
 
       const data = await getHouses();
 
-      // Ensure the API response is an array
       if (!Array.isArray(data)) {
         throw new Error("Invalid house data received from server.");
       }
@@ -53,11 +52,10 @@ export default function App() {
     refreshHouses();
   }, [refreshHouses]);
 
-  // Wrapper for adding houses that calls API
   const handleAddHouse = async (houseData) => {
     try {
       const result = await apiAddHouse(houseData);
-      await refreshHouses(); // Refresh to get updated list
+      await refreshHouses();
       return result;
     } catch (err) {
       console.error("Failed to add house:", err);
@@ -65,7 +63,6 @@ export default function App() {
     }
   };
 
-  // Wrapper for updating houses
   const handleUpdateHouse = async (id, changes) => {
     try {
       const result = await apiUpdateHouse(id, changes);
@@ -77,7 +74,6 @@ export default function App() {
     }
   };
 
-  // Wrapper for deleting houses
   const handleDeleteHouse = async (id) => {
     try {
       const result = await apiDeleteHouse(id);
@@ -142,97 +138,32 @@ export default function App() {
             </div>
           ) : (
             <Routes>
-              <Route
-                path="/"
-                element={<Home houses={houses} />}
-              />
-
-              <Route
-                path="/houses"
-                element={<Houses houses={houses} />}
-              />
-
-              <Route
-                path="/houses/:id"
-                element={<HouseDetails houses={houses} />}
-              />
-
-              <Route
-                path="/booking/:id"
-                element={<Booking houses={houses} />}
-              />
-
-              <Route
-                path="/landlord/login"
-                element={<LandlordLogin />}
-              />
-
-              <Route
-                path="/landlord"
-                element={
-                  <LandlordDashboard
-                    houses={houses}
-                    onRefresh={refreshHouses}
-                    onDelete={handleDeleteHouse}
-                    onUpdate={handleUpdateHouse}
-                  />
-                }
-              />
-
-              <Route
-                path="/landlord/bookings"
-                element={<LandlordBookings houses={houses} />}
-              />
-
-              <Route
-                path="/landlord/add"
-                element={
-                  <AddHouse onSaved={refreshHouses} />
-                }
-              />
-
-              <Route
-                path="/landlord/change-password"
-                element={<ChangePassword />}
-              />
-
-              {/* Admin Routes */}
-              <Route
-                path="/admin/login"
-                element={<AdminLogin />}
-              />
-
-              <Route
-                path="/admin"
-                element={<AdminDashboard />}
-              />
-
-              <Route
-                path="*"
-                element={<NotFound />}
-              />
+              <Route path="/" element={<Home houses={houses} />} />
+              <Route path="/houses" element={<Houses houses={houses} />} />
+              <Route path="/houses/:id" element={<HouseDetails houses={houses} />} />
+              <Route path="/booking/:id" element={<Booking houses={houses} />} />
+              <Route path="/landlord/login" element={<LandlordLogin />} />
+              <Route path="/landlord" element={<LandlordDashboard houses={houses} onRefresh={refreshHouses} onDelete={handleDeleteHouse} onUpdate={handleUpdateHouse} />} />
+              <Route path="/landlord/bookings" element={<LandlordBookings houses={houses} />} />
+              <Route path="/landlord/add" element={<AddHouse onSaved={refreshHouses} />} />
+              <Route path="/landlord/change-password" element={<ChangePassword />} />
+              <Route path="/admin/login" element={<SystemLogin />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           )}
         </main>
 
-        {/* AI Chat Agent - visible on all pages */}
         {!loading && !error && <AIChatAgent />}
 
         <footer className="footer">
           <div className="container footer-inner">
             <div>
               <strong>Embu Student Homes</strong>
-
-              <p>
-                Find affordable student accommodation
-                around University of Embu.
-              </p>
+              <p>Find affordable student accommodation around University of Embu.</p>
             </div>
-
             <div>
-              <span>
-                © {new Date().getFullYear()} Embu Student Homes
-              </span>
+              <span>© {new Date().getFullYear()} Embu Student Homes</span>
             </div>
           </div>
         </footer>

@@ -12,6 +12,7 @@ const pool = mysql.createPool({
   ssl: false
 });
 
+
 // Initialize database tables
 async function initDatabase() {
   try {
