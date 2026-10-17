@@ -40,7 +40,10 @@ export default function LandlordLogin() {
       const userEmail = result.landlord.email.toLowerCase();
       
       // Check if the user is an admin
-      if (userEmail === "landlord@embu.com" || userEmail === "admin@embu.com") {
+      // UPDATED: Added admin@gmail.com to the list of authorized admin emails
+      if (userEmail === "landlord@embu.com" || 
+          userEmail === "admin@embu.com" || 
+          userEmail === "admin@gmail.com") {
         // Redirect Admin to Admin Dashboard
         navigate("/admin");
       } else {
