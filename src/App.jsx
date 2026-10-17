@@ -5,7 +5,6 @@ import {
   Route,
 } from "react-router-dom";
 import ChangePassword from "./pages/ChangePassword";
-import SystemLogin from "./pages/SystemLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 
 import Navbar from "./components/Navbar";
@@ -147,7 +146,6 @@ export default function App() {
               <Route path="/landlord/bookings" element={<LandlordBookings houses={houses} />} />
               <Route path="/landlord/add" element={<AddHouse onSaved={refreshHouses} />} />
               <Route path="/landlord/change-password" element={<ChangePassword />} />
-              <Route path="/admin/login" element={<SystemLogin />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

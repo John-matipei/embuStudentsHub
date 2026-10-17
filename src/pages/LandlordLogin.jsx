@@ -28,12 +28,26 @@ export default function LandlordLogin() {
     setIsLoading(true);
 
     try {
+      // Attempt login
       const result = await loginLandlord(email.trim(), password);
       
-      localStorage.setItem("esh_landlord_session", result.token);
+      // Store session data
+      localStorage.setItem("esh_token", result.token);
       localStorage.setItem("esh_landlord_email", result.landlord.email);
+      localStorage.setItem("esh_landlord_session", "active");
       
-      navigate("/landlord");
+      // --- ROLE CHECK LOGIC ---
+      const userEmail = result.landlord.email.toLowerCase();
+      
+      // Check if the user is an admin
+      if (userEmail === "landlord@embu.com" || userEmail === "admin@embu.com") {
+        // Redirect Admin to Admin Dashboard
+        navigate("/admin");
+      } else {
+        // Redirect Regular Landlord to Landlord Dashboard
+        navigate("/landlord");
+      }
+      // ------------------------
       
     } catch (err) {
       setError(err.message || "Invalid email or password.");
@@ -116,7 +130,8 @@ export default function LandlordLogin() {
                 <LockKeyhole size={18} />
                 Secure sign in
               </>
-            )}
+            )
+          }
           </button>
         </form>
 
