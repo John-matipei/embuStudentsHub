@@ -14,10 +14,30 @@ import {
   Navigation,
   Clock,
   Car,
-  Walk,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import HouseCard from "../components/HouseCard";
+
+// Custom Walking Icon (since Walk is not in lucide-react)
+function WalkingIcon({ size = 18 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="13" cy="4" r="2" />
+      <path d="M7 21l3-4" />
+      <path d="M16 21l-2-4" />
+      <path d="M10 17l-2-4 3-3 2 2 3-3" />
+    </svg>
+  );
+}
 
 const teamMembers = [
   {
@@ -196,11 +216,6 @@ export default function Home({ houses }) {
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${mode}`;
   };
 
-  const getEmbedMapUrl = () => {
-    const markers = studentAreas.map(a => `markers=color:${a.color.replace('#', '')}%7C${a.lat},${a.lng}`).join('&');
-    return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15955.1!2d37.4561!3d-0.5031!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x18262c5d0c1e6c3d%3A0x5e5e5e5e5e5e5e5e!2sUniversity%20of%20Embu!5e0!3m2!1sen!2ske!4v1699999999999!5m2!1sen!2ske`;
-  };
-
   return (
     <>
       <section className="hero">
@@ -373,7 +388,7 @@ export default function Home({ houses }) {
               className={`mode-btn ${travelMode === 'walking' ? 'active' : ''}`}
               onClick={() => setTravelMode('walking')}
             >
-              <Walk size={18} />
+              <WalkingIcon size={18} />
               Walking
             </button>
             <button 
