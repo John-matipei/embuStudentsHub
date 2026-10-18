@@ -1,5 +1,5 @@
 //FROM HELLO WORLD TO A REAL PROGRAM INDEED YOU DID IT TO ME THANK YOU GOD
-import React, { useState } from "react";
+import React from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,33 +11,9 @@ import {
   Database,
   Lock,
   Server,
-  Navigation,
-  Clock,
-  Car,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import HouseCard from "../components/HouseCard";
-
-// Custom Walking Icon (since Walk is not in lucide-react)
-function WalkingIcon({ size = 18 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="13" cy="4" r="2" />
-      <path d="M7 21l3-4" />
-      <path d="M16 21l-2-4" />
-      <path d="M10 17l-2-4 3-3 2 2 3-3" />
-    </svg>
-  );
-}
 
 const teamMembers = [
   {
@@ -98,104 +74,13 @@ const teamMembers = [
   }
 ];
 
-// Student areas near University of Embu with accurate distances
+// Student areas near University of Embu - CORRECTED ORDER (closest to farthest)
 const studentAreas = [
-  {
-    id: 1,
-    name: "Kangaru",
-    distance: "0.5 km",
-    walkingTime: "6 min",
-    drivingTime: "2 min",
-    description: "Closest to campus, right opposite the university gate",
-    lat: -0.498,
-    lng: 37.458,
-    color: "#10b981",
-    popular: true
-  },
-  {
-    id: 2,
-    name: "Dallas",
-    distance: "2.3 km",
-    walkingTime: "28 min",
-    drivingTime: "5 min",
-    description: "Popular student area with affordable bedsitters",
-    lat: -0.485,
-    lng: 37.460,
-    color: "#3b82f6",
-    popular: true
-  },
-  {
-    id: 3,
-    name: "Samarity / Shauri Yako",
-    distance: "2.5 km",
-    walkingTime: "30 min",
-    drivingTime: "6 min",
-    description: "Budget-friendly hostels and shared rooms",
-    lat: -0.480,
-    lng: 37.462,
-    color: "#f59e0b",
-    popular: false
-  },
-  {
-    id: 4,
-    name: "Muthatari",
-    distance: "3.5 km",
-    walkingTime: "42 min",
-    drivingTime: "8 min",
-    description: "Near KEPHIS Embu, growing student community",
-    lat: -0.475,
-    lng: 37.465,
-    color: "#8b5cf6",
-    popular: false
-  },
-  {
-    id: 5,
-    name: "Majengo",
-    distance: "3.8 km",
-    walkingTime: "45 min",
-    drivingTime: "9 min",
-    description: "Busy area with many rental options",
-    lat: -0.470,
-    lng: 37.455,
-    color: "#ef4444",
-    popular: false
-  },
-  {
-    id: 6,
-    name: "Embu Town",
-    distance: "3.2 km",
-    walkingTime: "38 min",
-    drivingTime: "7 min",
-    description: "Central location with shops and transport",
-    lat: -0.465,
-    lng: 37.450,
-    color: "#dc2626",
-    popular: true
-  },
-  {
-    id: 7,
-    name: "Blue Valley",
-    distance: "4.5 km",
-    walkingTime: "55 min",
-    drivingTime: "10 min",
-    description: "Quieter area, good for focused study",
-    lat: -0.460,
-    lng: 37.445,
-    color: "#06b6d4",
-    popular: false
-  },
-  {
-    id: 8,
-    name: "Kiritiri",
-    distance: "6.0 km",
-    walkingTime: "75 min",
-    drivingTime: "12 min",
-    description: "Fast-developing with new hostels",
-    lat: -0.455,
-    lng: 37.440,
-    color: "#84cc16",
-    popular: false
-  }
+  { name: "Baggik", distance: "0.3 km", time: "4 min walk", color: "#10b981" },
+  { name: "Kangaru", distance: "0.8 km", time: "10 min walk", color: "#3b82f6" },
+  { name: "G-town", distance: "1.5 km", time: "18 min walk", color: "#f59e0b" },
+  { name: "Iveche", distance: "2.5 km", time: "30 min walk", color: "#8b5cf6" },
+  { name: "Kamiu", distance: "3.5 km", time: "42 min walk", color: "#ef4444" },
 ];
 
 export default function Home({ houses }) {
@@ -205,16 +90,6 @@ export default function Home({ houses }) {
   // Split team into first 6 and last 1 for layout
   const firstSix = teamMembers.slice(0, 6);
   const lastOne = teamMembers.slice(6, 7);
-
-  const [selectedArea, setSelectedArea] = useState(null);
-  const [travelMode, setTravelMode] = useState("walking"); // walking or driving
-
-  const getGoogleMapsUrl = (area) => {
-    const destination = `${area.lat},${area.lng}`;
-    const origin = "-0.5031,37.4561"; // University of Embu
-    const mode = travelMode === "walking" ? "walking" : "driving";
-    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${mode}`;
-  };
 
   return (
     <>
@@ -341,8 +216,8 @@ export default function Home({ houses }) {
         </div>
       </section>
 
-      {/* MAP SECTION - Student Areas Near University */}
-      <section className="section map-section">
+      {/* MAP SECTION - Clean Map with Area List */}
+      <section className="section map-section-clean">
         <div className="container">
           <div className="section-heading centered">
             <span className="eyebrow dark">
@@ -350,129 +225,42 @@ export default function Home({ houses }) {
               STUDENT AREAS
             </span>
 
-            <h2>Find Housing Near University of Embu</h2>
+            <h2>Areas Near University of Embu</h2>
 
             <p>
-              Explore student-friendly neighborhoods with accurate distances 
-              from campus. Click any area to get directions.
+              Find housing in these student-friendly neighborhoods around campus.
+              Listed from closest to farthest.
             </p>
           </div>
 
-          {/* Map Container */}
-          <div className="map-container">
-            <div className="map-wrapper">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15955.1!2d37.4561!3d-0.5031!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x18262c5d0c1e6c3d%3A0x5e5e5e5e5e5e5e5e!2sUniversity%20of%20Embu!5e0!3m2!1sen!2ske!4v1699999999999!5m2!1sen!2ske"
-                width="100%"
-                height="450"
-                style={{ border: 0, borderRadius: '12px' }}
-                allowFullScreen=""
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="University of Embu Map"
-              ></iframe>
-              
-              {/* University Marker Overlay */}
-              <div className="university-marker">
-                <div className="marker-pin">
-                  <MapPin size={24} color="#dc2626" />
-                </div>
-                <div className="marker-label">University of Embu</div>
-              </div>
-            </div>
+          {/* Large Map */}
+          <div className="map-container-clean">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15955.1!2d37.4561!3d-0.5031!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x18262c5d0c1e6c3d%3A0x5e5e5e5e5e5e5e5e!2sUniversity%20of%20Embu!5e0!3m2!1sen!2ske!4v1699999999999!5m2!1sen!2ske"
+              width="100%"
+              height="500"
+              style={{ border: 0, borderRadius: '16px' }}
+              allowFullScreen=""
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="University of Embu Map"
+            ></iframe>
           </div>
 
-          {/* Travel Mode Toggle */}
-          <div className="travel-mode-toggle">
-            <button 
-              className={`mode-btn ${travelMode === 'walking' ? 'active' : ''}`}
-              onClick={() => setTravelMode('walking')}
-            >
-              <WalkingIcon size={18} />
-              Walking
-            </button>
-            <button 
-              className={`mode-btn ${travelMode === 'driving' ? 'active' : ''}`}
-              onClick={() => setTravelMode('driving')}
-            >
-              <Car size={18} />
-              Driving
-            </button>
-          </div>
-
-          {/* Area Cards Grid */}
-          <div className="areas-grid">
-            {studentAreas.map((area) => (
-              <div 
-                key={area.id} 
-                className={`area-card ${selectedArea?.id === area.id ? 'selected' : ''} ${area.popular ? 'popular' : ''}`}
-                onClick={() => setSelectedArea(area)}
-              >
-                <div className="area-header">
-                  <div className="area-color-dot" style={{ backgroundColor: area.color }}></div>
-                  <h3>{area.name}</h3>
-                  {area.popular && <span className="popular-badge">Popular</span>}
+          {/* Simple Area List with Distances - ORDERED CLOSEST TO FARTHEST */}
+          <div className="area-list-clean">
+            {studentAreas.map((area, index) => (
+              <div key={index} className="area-item-clean">
+                <div className="area-rank">{index + 1}</div>
+                <div className="area-dot" style={{ backgroundColor: area.color }}></div>
+                <div className="area-info">
+                  <span className="area-name">{area.name}</span>
+                  <span className="area-distance">{area.distance}</span>
                 </div>
-                
-                <div className="area-distance">
-                  <Navigation size={16} />
-                  <strong>{area.distance}</strong>
-                  <span>from campus</span>
-                </div>
-
-                <div className="area-time">
-                  <Clock size={14} />
-                  <span>
-                    {travelMode === 'walking' ? area.walkingTime : area.drivingTime}
-                  </span>
-                </div>
-
-                <p className="area-description">{area.description}</p>
-
-                <a 
-                  href={getGoogleMapsUrl(area)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="area-directions-btn"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Get Directions
-                  <ArrowRight size={14} />
-                </a>
+                <span className="area-time">{area.time}</span>
               </div>
             ))}
           </div>
-
-          {/* Selected Area Detail */}
-          {selectedArea && (
-            <div className="selected-area-detail">
-              <h3>
-                <MapPin size={20} color={selectedArea.color} />
-                {selectedArea.name}
-              </h3>
-              <p>{selectedArea.description}</p>
-              <div className="detail-stats">
-                <div>
-                  <strong>Distance:</strong> {selectedArea.distance}
-                </div>
-                <div>
-                  <strong>Walking:</strong> {selectedArea.walkingTime}
-                </div>
-                <div>
-                  <strong>Driving:</strong> {selectedArea.drivingTime}
-                </div>
-              </div>
-              <a 
-                href={getGoogleMapsUrl(selectedArea)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-primary"
-              >
-                <Navigation size={16} />
-                Open in Google Maps
-              </a>
-            </div>
-          )}
         </div>
       </section>
 
