@@ -1,51 +1,38 @@
-import React, {
-  useState,
-} from "react";
-
+import React, { useState } from "react";
 import {
   Building2,
   Menu,
   X,
   Search,
   UserRound,
+  Users
 } from "lucide-react";
-
 import {
   Link,
   useLocation,
 } from "react-router-dom";
 
 export default function Navbar() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
 
-  const [open, setOpen] =
-    useState(false);
-
-  const location =
-    useLocation();
-
-  const closeMenu = () =>
-    setOpen(false);
+  const closeMenu = () => setOpen(false);
 
   return (
     <header className="navbar">
-
       <div className="container nav-inner">
-
         <Link
           to="/"
           className="brand"
           onClick={closeMenu}
         >
-
           <span className="brand-icon">
             <Building2 size={21} />
           </span>
-
           <span>
             Embu
             <strong>Student Homes</strong>
           </span>
-
         </Link>
 
         <nav
@@ -55,7 +42,6 @@ export default function Navbar() {
               : "nav-links"
           }
         >
-
           <Link
             to="/"
             className={
@@ -66,6 +52,19 @@ export default function Navbar() {
             onClick={closeMenu}
           >
             Home
+          </Link>
+
+          <Link
+            to="/team"
+            className={
+              location.pathname === "/team"
+                ? "active"
+                : ""
+            }
+            onClick={closeMenu}
+          >
+            <Users size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+            Our Team
           </Link>
 
           <Link
@@ -97,7 +96,6 @@ export default function Navbar() {
           </Link>
 
           <div className="mobile-nav-action">
-
             <Link
               to="/houses"
               className="btn btn-primary"
@@ -106,13 +104,11 @@ export default function Navbar() {
               <Search size={17} />
               Find a home
             </Link>
-
           </div>
 
         </nav>
 
         <div className="nav-actions">
-
           <Link
             to="/landlord/login"
             className="nav-login"
@@ -127,7 +123,6 @@ export default function Navbar() {
           >
             Find a home
           </Link>
-
         </div>
 
         <button
@@ -145,7 +140,6 @@ export default function Navbar() {
         </button>
 
       </div>
-
     </header>
   );
 }

@@ -6,7 +6,7 @@ import {
 } from "react-router-dom";
 import ChangePassword from "./pages/ChangePassword";
 import AdminDashboard from "./pages/AdminDashboard";
-
+// import Team from "./pages/Team";
 import Navbar from "./components/Navbar";
 import AIChatAgent from "./components/AIChatAgent";
 
@@ -148,6 +148,7 @@ export default function App() {
               <Route path="/landlord/change-password" element={<ChangePassword />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="*" element={<NotFound />} />
+              {/* <Route path="/team" element={<Team />} /> */}
             </Routes>
           )}
         </main>
