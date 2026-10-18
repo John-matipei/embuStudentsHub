@@ -334,40 +334,67 @@ app.post("/api/bookings", async (req, res) => {
   }
 });
 
+// UPDATED: This route now checks for admin privileges
 app.get("/api/bookings", requireAuth, async (req, res) => {
   try {
     const { houseId } = req.query;
     
-    let query = `
-      SELECT 
-        b.id,
-        b.house_id,
-        b.name,
-        b.email,
-        b.phone,
-        b.preferred_date,
-        b.preferred_time,
-        b.message,
-        b.student_id,
-        b.status,
-        b.created_at,
-        h.title as house_title,
-        h.estate as house_estate,
-        h.image as house_image,
-        h.rent as house_rent
-      FROM bookings b
-      JOIN houses h ON b.house_id = h.id
-      WHERE h.landlord_id = ?
-    `;
-    let params = [req.landlord.landlordId];
-    
-    if (houseId) {
-      query += ' AND b.house_id = ?';
-      params.push(houseId);
+    // Check if the user is an admin
+    const isAdmin = req.landlord.email === 'landlord@embu.com' || 
+                    req.landlord.email === 'admin@embu.com' || 
+                    req.landlord.email === 'admin@gmail.com';
+
+    let query;
+    let params = [];
+
+    if (isAdmin) {
+      // ADMIN LOGIC: Fetch ALL bookings (or filtered by houseId if provided)
+      if (houseId) {
+        // If admin specifically asks for bookings of a specific house
+        query = `
+          SELECT 
+            b.id, b.house_id, b.name, b.email, b.phone, b.preferred_date, 
+            b.preferred_time, b.message, b.student_id, b.status, b.created_at,
+            h.title as house_title, h.estate as house_estate, h.image as house_image, h.rent as house_rent
+          FROM bookings b
+          JOIN houses h ON b.house_id = h.id
+          WHERE b.house_id = ?
+          ORDER BY b.created_at DESC
+        `;
+        params = [houseId];
+      } else {
+        // Fetch ALL bookings for admin dashboard
+        query = `
+          SELECT 
+            b.id, b.house_id, b.name, b.email, b.phone, b.preferred_date, 
+            b.preferred_time, b.message, b.student_id, b.status, b.created_at,
+            h.title as house_title, h.estate as house_estate, h.image as house_image, h.rent as house_rent
+          FROM bookings b
+          JOIN houses h ON b.house_id = h.id
+          ORDER BY b.created_at DESC
+        `;
+        params = [];
+      }
+    } else {
+      // LANDlord LOGIC: Fetch ONLY bookings for their own houses
+      query = `
+        SELECT 
+          b.id, b.house_id, b.name, b.email, b.phone, b.preferred_date, 
+          b.preferred_time, b.message, b.student_id, b.status, b.created_at,
+          h.title as house_title, h.estate as house_estate, h.image as house_image, h.rent as house_rent
+        FROM bookings b
+        JOIN houses h ON b.house_id = h.id
+        WHERE h.landlord_id = ?
+        ORDER BY b.created_at DESC
+      `;
+      params = [req.landlord.landlordId];
+      
+      if (houseId) {
+        query += ' AND b.house_id = ?';
+        params.push(houseId);
+      }
     }
-    
-    query += ' ORDER BY b.created_at DESC';
-    
+
     const [bookings] = await pool.execute(query, params);
     
     const formatted = bookings.map(b => ({
@@ -467,7 +494,7 @@ function getAIResponse(message) {
 }
 
 function randomResponse(responses) {
-  return responses[Math.floor(Math.random() * responses.length)];
+  return responses[Math.floor(Math.random * responses.length)];
 }
 
 app.post("/api/chat", async (req, res) => {
