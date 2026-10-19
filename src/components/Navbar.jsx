@@ -55,19 +55,6 @@ export default function Navbar() {
           </Link>
 
           <Link
-            to="/team"
-            className={
-              location.pathname === "/team"
-                ? "active"
-                : ""
-            }
-            onClick={closeMenu}
-          >
-            <Users size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-            Our Team
-          </Link>
-
-          <Link
             to="/houses"
             className={
               location.pathname.startsWith(
