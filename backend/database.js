@@ -1,88 +1,83 @@
-const mysql = require('mysql2/promise');
+// database.js (POSTGRESQL VERSION - REPLACES YOUR CURRENT FILE)
+const { Pool } = require('pg');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'embu_homes',
-  port: process.env.DB_PORT || 3306,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  ssl: false
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Required for Supabase
+  }
 });
 
-
-// Initialize database tables
 async function initDatabase() {
+  const client = await pool.connect();
   try {
-    const connection = await pool.getConnection();
-    
-    // Landlords table - only ONE TIMESTAMP with CURRENT_TIMESTAMP
-    await connection.execute(`
+    console.log('Initializing PostgreSQL database...');
+
+    // 1. Landlords Table
+    await client.query(`
       CREATE TABLE IF NOT EXISTS landlords (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        email VARCHAR(191) UNIQUE NOT NULL,
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         phone VARCHAR(50),
         name VARCHAR(255),
-        is_default_account TINYINT(1) DEFAULT 0,
-        password_changed TINYINT(1) DEFAULT 0,
+        is_default_account BOOLEAN DEFAULT FALSE,
+        password_changed BOOLEAN DEFAULT FALSE,
         login_attempts INT DEFAULT 0,
         last_login TIMESTAMP NULL DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT NULL,
+        updated_at TIMESTAMP NULL,
         ip_address VARCHAR(45),
         user_agent TEXT
       )
     `);
-    
-    // Security logs table
-    await connection.execute(`
+
+    // 2. Security Logs Table
+    await client.query(`
       CREATE TABLE IF NOT EXISTS security_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        landlord_id INT,
+        id SERIAL PRIMARY KEY,
+        landlord_id INT REFERENCES landlords(id),
         action VARCHAR(100) NOT NULL,
         ip_address VARCHAR(45),
         user_agent TEXT,
-        success TINYINT(1),
+        success BOOLEAN,
         details TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT NULL
+        updated_at TIMESTAMP NULL
       )
     `);
-    
-    // Houses table
-    await connection.execute(`
+
+    // 3. Houses Table
+    await client.query(`
       CREATE TABLE IF NOT EXISTS houses (
         id VARCHAR(100) PRIMARY KEY,
-        landlord_id INT NOT NULL,
+        landlord_id INT NOT NULL REFERENCES landlords(id),
         title VARCHAR(255) NOT NULL,
         estate VARCHAR(100),
         type VARCHAR(50),
         rent INT,
         deposit INT,
         distance VARCHAR(50),
-        status ENUM('Vacant', 'Occupied') DEFAULT 'Vacant',
+        status VARCHAR(50) DEFAULT 'Vacant',
         rooms INT DEFAULT 1,
         bathrooms INT DEFAULT 1,
         water VARCHAR(50),
         electricity VARCHAR(50),
-        furnished TINYINT(1) DEFAULT 0,
+        furnished BOOLEAN DEFAULT FALSE,
         description TEXT,
         phone VARCHAR(50),
-        image LONGTEXT,
+        image TEXT,
         amenities TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT NULL
+        updated_at TIMESTAMP NULL
       )
     `);
-    
-    // Bookings table
-    await connection.execute(`
+
+    // 4. Bookings Table
+    await client.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id VARCHAR(100) PRIMARY KEY,
-        house_id VARCHAR(100) NOT NULL,
+        house_id VARCHAR(100) NOT NULL REFERENCES houses(id),
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255),
         phone VARCHAR(50) NOT NULL,
@@ -90,17 +85,31 @@ async function initDatabase() {
         preferred_time VARCHAR(50),
         message TEXT,
         student_id VARCHAR(100),
-        status ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
+        status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT NULL
+        updated_at TIMESTAMP NULL
       )
     `);
+
+    console.log('Database tables initialized successfully in PostgreSQL.');
     
-    console.log('Database tables initialized successfully');
-    connection.release();
+    // Create default landlord if not exists
+    const checkUser = await client.query('SELECT id FROM landlords WHERE email = $1', ['landlord@embu.com']);
+    if (checkUser.rows.length === 0) {
+      const bcrypt = require('bcrypt'); // Ensure bcrypt is installed
+      const hashedPassword = await bcrypt.hash('Embu123!', 10);
+      await client.query(
+        'INSERT INTO landlords (email, password_hash, name, is_default_account) VALUES ($1, $2, $3, $4)',
+        ['landlord@embu.com', hashedPassword, 'Default Admin', true]
+      );
+      console.log('Default landlord account created: landlord@embu.com / Embu123!');
+    }
+
   } catch (error) {
     console.error('Database initialization failed:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 

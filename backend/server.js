@@ -90,19 +90,20 @@ app.post("/api/auth/change-password", requireAuth, async (req, res) => {
 });
 
 app.get("/api/auth/me", requireAuth, async (req, res) => {
-  const [landlords] = await pool.execute(
-    'SELECT id, email, name, phone, password_changed FROM landlords WHERE id = ?',
+  // PostgreSQL: Use $1 for parameters
+  const result = await pool.query(
+    'SELECT id, email, name, phone, password_changed FROM landlords WHERE id = $1',
     [req.landlord.landlordId]
   );
   
-  if (landlords.length === 0) {
+  if (result.rows.length === 0) {
     return res.status(404).json({ message: 'Landlord not found' });
   }
   
   res.json({
     landlord: {
-      ...landlords[0],
-      needsPasswordChange: !landlords[0].password_changed
+      ...result.rows[0],
+      needsPasswordChange: !result.rows[0].password_changed
     }
   });
 });
@@ -164,13 +165,14 @@ app.get("/api/admin/security-logs", requireAuth, async (req, res) => {
 
 app.get("/api/houses", async (req, res) => {
   try {
-    const [houses] = await pool.execute(`
+    // PostgreSQL: No parameters needed for this query
+    const result = await pool.query(`
       SELECT h.*, l.email as landlord_email, l.name as landlord_name, l.phone as landlord_phone
       FROM houses h
       JOIN landlords l ON h.landlord_id = l.id
     `);
     
-    const parsed = houses.map(h => ({
+    const parsed = result.rows.map(h => ({
       ...h,
       amenities: JSON.parse(h.amenities || '[]'),
       price: h.rent,
@@ -187,24 +189,25 @@ app.get("/api/houses", async (req, res) => {
 
 app.get("/api/houses/:id", async (req, res) => {
   try {
-    const [houses] = await pool.execute(`
+    // PostgreSQL: Use $1 for parameters
+    const result = await pool.query(`
       SELECT h.*, l.email as landlord_email, l.name as landlord_name, l.phone as landlord_phone
       FROM houses h
       JOIN landlords l ON h.landlord_id = l.id
-      WHERE h.id = ?
+      WHERE h.id = $1
     `, [req.params.id]);
     
-    if (houses.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: "House not found" });
     }
     
     const house = {
-      ...houses[0],
-      amenities: JSON.parse(houses[0].amenities || '[]'),
-      price: houses[0].rent,
-      landlord: houses[0].landlord_name,
-      landlordEmail: houses[0].landlord_email,
-      landlordPhone: houses[0].landlord_phone
+      ...result.rows[0],
+      amenities: JSON.parse(result.rows[0].amenities || '[]'),
+      price: result.rows[0].rent,
+      landlord: result.rows[0].landlord_name,
+      landlordEmail: result.rows[0].landlord_email,
+      landlordPhone: result.rows[0].landlord_phone
     };
     
     res.json(house);
@@ -221,11 +224,12 @@ app.post("/api/houses", requireAuth, async (req, res) => {
     
     const houseId = `house-${Date.now()}`;
     
-    await pool.execute(
+    // PostgreSQL: Use $1, $2, ... for parameters
+    await pool.query(
       `INSERT INTO houses (id, landlord_id, title, estate, type, rent, deposit, 
        distance, status, rooms, bathrooms, water, electricity, furnished, 
        description, phone, image, amenities) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
       [houseId, req.landlord.landlordId, title, estate, type, rent, deposit,
        distance, status, rooms, bathrooms, water, electricity, furnished,
        description, phone, image, JSON.stringify(amenities || [])]
@@ -242,37 +246,40 @@ app.post("/api/houses", requireAuth, async (req, res) => {
 
 app.put("/api/houses/:id", requireAuth, async (req, res) => {
   try {
-    const [houses] = await pool.execute(
-      'SELECT landlord_id FROM houses WHERE id = ?',
+    // PostgreSQL: Use $1 for parameters
+    const checkResult = await pool.query(
+      'SELECT landlord_id FROM houses WHERE id = $1',
       [req.params.id]
     );
     
-    if (houses.length === 0) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({ message: "House not found" });
     }
     
-    if (houses[0].landlord_id !== req.landlord.landlordId) {
+    if (checkResult.rows[0].landlord_id !== req.landlord.landlordId) {
       return res.status(403).json({ message: "Not authorized" });
     }
     
     const updates = req.body;
     const fields = [];
     const values = [];
+    let paramCount = 1;
     
     Object.keys(updates).forEach(key => {
       if (key === 'amenities') {
-        fields.push(`${key} = ?`);
+        fields.push(`${key} = $${paramCount}`);
         values.push(JSON.stringify(updates[key]));
       } else {
-        fields.push(`${key} = ?`);
+        fields.push(`${key} = $${paramCount}`);
         values.push(updates[key]);
       }
+      paramCount++;
     });
     
     values.push(req.params.id);
     
-    await pool.execute(
-      `UPDATE houses SET ${fields.join(', ')} WHERE id = ?`,
+    await pool.query(
+      `UPDATE houses SET ${fields.join(', ')} WHERE id = $${paramCount}`,
       values
     );
     
@@ -284,20 +291,21 @@ app.put("/api/houses/:id", requireAuth, async (req, res) => {
 
 app.delete("/api/houses/:id", requireAuth, async (req, res) => {
   try {
-    const [houses] = await pool.execute(
-      'SELECT landlord_id FROM houses WHERE id = ?',
+    // PostgreSQL: Use $1 for parameters
+    const checkResult = await pool.query(
+      'SELECT landlord_id FROM houses WHERE id = $1',
       [req.params.id]
     );
     
-    if (houses.length === 0) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({ message: "House not found" });
     }
     
-    if (houses[0].landlord_id !== req.landlord.landlordId) {
+    if (checkResult.rows[0].landlord_id !== req.landlord.landlordId) {
       return res.status(403).json({ message: "Not authorized" });
     }
     
-    await pool.execute('DELETE FROM houses WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM houses WHERE id = $1', [req.params.id]);
     
     res.json({ message: "House deleted successfully." });
   } catch (error) {
@@ -311,17 +319,18 @@ app.post("/api/bookings", async (req, res) => {
   try {
     const { houseId, name, email, phone, preferredDate, preferredTime, message, studentId } = req.body;
 
-    const [houses] = await pool.execute('SELECT id FROM houses WHERE id = ?', [houseId]);
-    if (houses.length === 0) {
+    // PostgreSQL: Use $1 for parameters
+    const checkResult = await pool.query('SELECT id FROM houses WHERE id = $1', [houseId]);
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({ message: "House not found" });
     }
 
     const bookingId = `booking-${Date.now()}`;
 
-    await pool.execute(
+    await pool.query(
       `INSERT INTO bookings (id, house_id, name, email, phone, preferred_date, 
        preferred_time, message, student_id, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')`,
       [bookingId, houseId, name, email, phone, preferredDate, preferredTime, message, studentId]
     );
 
@@ -358,7 +367,7 @@ app.get("/api/bookings", requireAuth, async (req, res) => {
             h.title as house_title, h.estate as house_estate, h.image as house_image, h.rent as house_rent
           FROM bookings b
           JOIN houses h ON b.house_id = h.id
-          WHERE b.house_id = ?
+          WHERE b.house_id = $1
           ORDER BY b.created_at DESC
         `;
         params = [houseId];
@@ -384,20 +393,20 @@ app.get("/api/bookings", requireAuth, async (req, res) => {
           h.title as house_title, h.estate as house_estate, h.image as house_image, h.rent as house_rent
         FROM bookings b
         JOIN houses h ON b.house_id = h.id
-        WHERE h.landlord_id = ?
+        WHERE h.landlord_id = $1
         ORDER BY b.created_at DESC
       `;
       params = [req.landlord.landlordId];
       
       if (houseId) {
-        query += ' AND b.house_id = ?';
+        query += ' AND b.house_id = $2';
         params.push(houseId);
       }
     }
 
-    const [bookings] = await pool.execute(query, params);
+    const result = await pool.query(query, params);
     
-    const formatted = bookings.map(b => ({
+    const formatted = result.rows.map(b => ({
       id: b.id,
       houseId: b.house_id,
       name: b.name,
@@ -426,18 +435,19 @@ app.put("/api/bookings/:id", requireAuth, async (req, res) => {
   try {
     const { status } = req.body;
     
-    const [bookings] = await pool.execute(`
+    // PostgreSQL: Use $1 and $2 for parameters
+    const checkResult = await pool.query(`
       SELECT b.id FROM bookings b
       JOIN houses h ON b.house_id = h.id
-      WHERE b.id = ? AND h.landlord_id = ?
+      WHERE b.id = $1 AND h.landlord_id = $2
     `, [req.params.id, req.landlord.landlordId]);
     
-    if (bookings.length === 0) {
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({ message: "Booking not found or not authorized" });
     }
     
-    await pool.execute(
-      'UPDATE bookings SET status = ? WHERE id = ?',
+    await pool.query(
+      'UPDATE bookings SET status = $1 WHERE id = $2',
       [status, req.params.id]
     );
     
@@ -460,7 +470,7 @@ const aiResponses = {
   ],
   location: [
     "We have properties in Kangaru, Dallas, Muthatari, and other areas near University of Embu.",
-    "Popular student areas include Kangaru (closest to campus), Dallas (affordable), and Muthatari (good amenities).",
+    "Popular student areas include Kangaru,Baggik (closest to campus), Dallas (affordable), and Muthatari (good amenities).",
   ],
   booking: [
     "You can book a viewing by clicking the 'Book Viewing' button on any house listing.",
@@ -494,7 +504,7 @@ function getAIResponse(message) {
 }
 
 function randomResponse(responses) {
-  return responses[Math.floor(Math.random * responses.length)];
+  return responses[Math.floor(Math.random() * responses.length)];
 }
 
 app.post("/api/chat", async (req, res) => {
