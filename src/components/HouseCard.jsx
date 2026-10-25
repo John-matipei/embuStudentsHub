@@ -1,3 +1,4 @@
+// src/components/HouseCard.jsx
 import React from "react";
 import {
   BedDouble,
@@ -14,23 +15,23 @@ export default function HouseCard({ house }) {
     ? "254" + house.phone.replace(/\D/g, "").replace(/^0/, "")
     : "";
 
+  // Check for valid vacant status
+  const isVacant = house.status === "Vacant" || house.status === "available" || house.status === "Available";
+
   return (
     <article className="house-card">
-      {/* Image Link */}
-      <Link to={`/houses/${house.id}`} className="house-image">
+      {/* Image Link - FIXED TO SHOW FULL IMAGE */}
+      <Link to={`/houses/${house.id}`} className="house-image-link">
         <img
           src={house.image || "https://via.placeholder.com/400x300?text=No+Image"}
           alt={house.title}
           loading="lazy"
+          onError={(e) => {
+            e.target.src = "https://via.placeholder.com/400x300?text=No+Image";
+          }}
         />
 
-        <span
-          className={
-            house.status === "Vacant"
-              ? "status vacant"
-              : "status occupied"
-          }
-        >
+        <span className={`status-badge ${isVacant ? "vacant" : "occupied"}`}>
           {house.status}
         </span>
 
@@ -73,13 +74,13 @@ export default function HouseCard({ house }) {
 
         {/* Action Buttons */}
         <div className="house-actions">
-          {house.status === "Vacant" && (
+          {isVacant && (
             <Link
               to={`/booking/${house.id}`}
-              className="btn-book"
+              className="btn-action btn-book"
             >
-              <Calendar size={14} />
-              Book Viewing
+              <Calendar size={16} />
+              <span>Book</span>
             </Link>
           )}
 
@@ -88,11 +89,11 @@ export default function HouseCard({ house }) {
               href={`https://wa.me/${whatsappNumber}`}
               target="_blank"
               rel="noreferrer"
-              className="btn-whatsapp"
+              className="btn-action btn-whatsapp"
               onClick={(e) => e.stopPropagation()}
             >
-              <Phone size={14} />
-              WhatsApp
+              <Phone size={16} />
+              <span>WhatsApp</span>
             </a>
           )}
         </div>
@@ -101,10 +102,14 @@ export default function HouseCard({ house }) {
       <style>{`
         .house-card {
           background: white;
-          border-radius: 15px;
+          border-radius: 16px;
           overflow: hidden;
           border: 1px solid #e5e7eb;
           transition: transform 0.25s ease, box-shadow 0.25s ease;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
         }
 
         .house-card:hover {
@@ -112,53 +117,73 @@ export default function HouseCard({ house }) {
           box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
         }
 
-        .house-image {
+        /* ============================================
+           IMAGE SECTION - FIXED TO SHOW FULL IMAGE
+           ============================================ */
+        .house-image-link {
           position: relative;
           display: block;
-          height: 235px;
+          width: 100%;
+          height: 220px; /* Fixed height that shows more of image */
           overflow: hidden;
-          background: #dce7df;
+          background: #e5e7eb;
+          flex-shrink: 0;
         }
 
-        .house-image img {
+        .house-image-link img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: cover; /* Crops to fill, maintains aspect */
+          object-position: center center; /* Centers the crop */
+          display: block;
           transition: transform 0.45s ease;
         }
 
-        .house-card:hover .house-image img {
+        /* Alternative: Use contain to see full image (may have letterbox) */
+        /* Uncomment below and comment out object-fit: cover above */
+        /*
+        .house-image-link img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          object-position: center;
+          background: #f3f4f6;
+        }
+        */
+
+        .house-card:hover .house-image-link img {
           transform: scale(1.05);
         }
 
-        .status {
+        .status-badge {
           position: absolute;
-          top: 14px;
-          left: 14px;
-          padding: 7px 10px;
-          border-radius: 999px;
-          font-size: 9px;
-          font-weight: 900;
+          top: 12px;
+          left: 12px;
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-size: 10px;
+          font-weight: 800;
           letter-spacing: 0.06em;
           text-transform: uppercase;
+          z-index: 2;
         }
 
-        .status.vacant {
+        .status-badge.vacant {
           color: #126336;
           background: #dff5e5;
         }
 
-        .status.occupied {
+        .status-badge.occupied {
           color: #8a3e31;
           background: #f8e3de;
         }
 
         .image-arrow {
           position: absolute;
-          right: 14px;
-          bottom: 14px;
-          width: 38px;
-          height: 38px;
+          right: 12px;
+          bottom: 12px;
+          width: 36px;
+          height: 36px;
           display: grid;
           place-items: center;
           color: white;
@@ -166,7 +191,8 @@ export default function HouseCard({ house }) {
           border-radius: 50%;
           opacity: 0;
           transform: translateY(6px);
-          transition: 0.2s ease;
+          transition: all 0.2s ease;
+          z-index: 2;
         }
 
         .house-card:hover .image-arrow {
@@ -174,8 +200,15 @@ export default function HouseCard({ house }) {
           transform: translateY(0);
         }
 
+        /* ============================================
+           BODY SECTION
+           ============================================ */
         .house-body {
-          padding: 20px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          min-width: 0;
         }
 
         .house-type {
@@ -184,13 +217,15 @@ export default function HouseCard({ house }) {
           font-weight: 900;
           letter-spacing: 0.1em;
           text-transform: uppercase;
+          margin-bottom: 4px;
         }
 
         .house-body h3 {
-          margin: 6px 0 9px;
-          font-size: 19px;
-          letter-spacing: -0.025em;
+          margin: 0 0 8px;
+          font-size: 17px;
+          font-weight: 700;
           color: #111827;
+          line-height: 1.3;
           transition: color 0.2s;
         }
 
@@ -204,16 +239,17 @@ export default function HouseCard({ house }) {
           gap: 6px;
           color: #68736c;
           font-size: 12px;
+          margin-bottom: 12px;
         }
 
         .house-meta {
           display: flex;
           justify-content: space-between;
           gap: 10px;
-          padding: 15px 0;
-          margin-top: 14px;
+          padding: 12px 0;
           border-top: 1px solid #edf0ed;
           border-bottom: 1px solid #edf0ed;
+          margin-bottom: 12px;
         }
 
         .house-meta span {
@@ -221,21 +257,21 @@ export default function HouseCard({ house }) {
           align-items: center;
           gap: 6px;
           color: #68736c;
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .house-bottom {
           display: flex;
           align-items: flex-end;
           justify-content: space-between;
-          padding-top: 16px;
+          margin-bottom: 12px;
         }
 
         .house-bottom small {
           display: block;
           margin-bottom: 2px;
           color: #89938d;
-          font-size: 9px;
+          font-size: 11px;
         }
 
         .house-bottom strong {
@@ -246,32 +282,38 @@ export default function HouseCard({ house }) {
 
         .view-link {
           color: #176b3a;
-          font-size: 12px;
-          font-weight: 900;
+          font-size: 13px;
+          font-weight: 700;
+          text-decoration: none;
         }
 
-        /* Action Buttons */
+        /* ============================================
+           ACTION BUTTONS
+           ============================================ */
         .house-actions {
           display: flex;
+          flex-direction: row;
           gap: 8px;
-          margin-top: 15px;
-          padding-top: 15px;
+          margin-top: auto;
+          padding-top: 12px;
           border-top: 1px solid #edf0ed;
         }
 
-        .btn-book,
-        .btn-whatsapp {
+        .btn-action {
           flex: 1;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
-          padding: 10px 14px;
-          border-radius: 10px;
+          padding: 10px 12px;
+          border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
           text-decoration: none;
           transition: all 0.2s ease;
+          min-height: 40px;
+          border: none;
+          cursor: pointer;
         }
 
         .btn-book {
@@ -292,14 +334,68 @@ export default function HouseCard({ house }) {
           background: #128c7e;
         }
 
-        /* Responsive */
-        @media (max-width: 480px) {
-          .house-image {
+        /* ============================================
+           RESPONSIVE BREAKPOINTS
+           ============================================ */
+        
+        /* Tablet */
+        @media (max-width: 768px) {
+          .house-image-link {
             height: 200px;
           }
 
-          .house-actions {
-            flex-direction: column;
+          .house-body {
+            padding: 14px;
+          }
+
+          .house-body h3 {
+            font-size: 16px;
+          }
+
+          .btn-action {
+            padding: 10px;
+            font-size: 11px;
+          }
+        }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+          .house-image-link {
+            height: 180px;
+          }
+
+          .house-body {
+            padding: 12px;
+          }
+
+          .house-body h3 {
+            font-size: 15px;
+          }
+
+          .house-bottom strong {
+            font-size: 16px;
+          }
+
+          .btn-action {
+            padding: 10px 8px;
+            font-size: 11px;
+            gap: 4px;
+          }
+        }
+
+        /* Very small screens - icons only */
+        @media (max-width: 360px) {
+          .btn-action {
+            padding: 10px;
+          }
+
+          .btn-action span {
+            display: none;
+          }
+
+          .btn-action svg {
+            width: 18px;
+            height: 18px;
           }
         }
       `}</style>

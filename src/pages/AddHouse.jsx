@@ -1,3 +1,4 @@
+// src/pages/AddHouse.jsx
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -7,15 +8,12 @@ import {
   Loader2,
   CheckCircle2,
 } from "lucide-react";
-import {
-  Link,
-  useNavigate,
-} from "react-router-dom";
-import { addHouse as apiAddHouse } from "../services/api";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const DRAFT_STORAGE_KEY = "embu_homes_add_house_draft_v2";
 
-// Resize/compress the image before sending
 const imageFileToDataUrl = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -69,44 +67,41 @@ export default function AddHouse({ onSaved }) {
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const navigate = useNavigate();
 
-  // Restore draft on mount
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
+    setIsAuthenticated(!!(token && userStr));
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
     try {
       const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (!savedDraft) return;
-
       const draft = JSON.parse(savedDraft);
-      if (!draft || typeof draft !== "object") return;
-
-      if (draft.form) {
-        setForm({ ...initialForm, ...draft.form });
-      }
-      if (Array.isArray(draft.amenities)) {
-        setAmenities(draft.amenities);
-      }
-      if (typeof draft.image === "string" && draft.image) {
+      if (draft.form) setForm({ ...initialForm, ...draft.form });
+      if (Array.isArray(draft.amenities)) setAmenities(draft.amenities);
+      if (typeof draft.image === 'string' && draft.image) {
         setImagePreview(draft.image);
         setForm((prev) => ({ ...prev, image: draft.image }));
       }
     } catch (error) {
       console.error("Could not restore draft:", error);
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  // Save draft on changes
   useEffect(() => {
+    if (!isAuthenticated) return;
     try {
-      localStorage.setItem(
-        DRAFT_STORAGE_KEY,
-        JSON.stringify({ form, amenities, image: imagePreview })
-      );
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ form, amenities, image: imagePreview }));
     } catch (error) {
       console.warn("Draft could not be saved:", error);
     }
-  }, [form, amenities, imagePreview]);
+  }, [form, amenities, imagePreview, isAuthenticated]);
 
   const change = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -116,20 +111,15 @@ export default function AddHouse({ onSaved }) {
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
       setError("Please select a valid image file.");
       return;
     }
-
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
+    if (file.size > 5 * 1024 * 1024) {
       setError("Image size must be less than 5MB.");
       return;
     }
-
     setError("");
-
     try {
       const base64Image = await imageFileToDataUrl(file);
       setImagePreview(base64Image);
@@ -143,8 +133,6 @@ export default function AddHouse({ onSaved }) {
   const removeImage = () => {
     setImagePreview("");
     setForm((prev) => ({ ...prev, image: "" }));
-    document.getElementById("house-image") && (document.getElementById("house-image").value = "");
-    document.getElementById("change-house-image") && (document.getElementById("change-house-image").value = "");
   };
 
   const addAmenity = () => {
@@ -155,24 +143,34 @@ export default function AddHouse({ onSaved }) {
     }
   };
 
-  // MAIN SUBMIT FUNCTION - Now uses API
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess(false);
 
-    // Validation
     if (!form.title || !form.estate || !form.rent || !form.phone || !form.description) {
       setError("Please fill in all required fields (*).");
       return;
     }
-
     if (!imagePreview) {
       setError("Please select a house image.");
       return;
     }
 
     setIsSubmitting(true);
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Session expired. Please login again.");
+      setIsAuthenticated(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const finalAmenities = [...amenities];
+    if (form.water) finalAmenities.push(`Water: ${form.water}`);
+    if (form.electricity) finalAmenities.push(`Electricity: ${form.electricity}`);
+    if (form.furnished) finalAmenities.push("Furnished");
 
     const property = {
       title: form.title,
@@ -184,69 +182,60 @@ export default function AddHouse({ onSaved }) {
       status: form.status,
       rooms: Number(form.rooms),
       bathrooms: Number(form.bathrooms),
-      water: form.water,
-      electricity: form.electricity,
-      furnished: form.furnished,
       description: form.description,
       phone: form.phone,
       image: imagePreview,
-      amenities: [...amenities],
-      landlord: "My Listing",
-      landlordEmail: localStorage.getItem("esh_landlord_email") || "",
+      amenities: finalAmenities,
     };
 
     try {
-      // Call API to add house
-      const result = await apiAddHouse(property);
-      console.log("House added successfully:", result);
-
-      // Clear draft
+      const result = await axios.post(`${API_URL}/api/houses`, property, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log("House added successfully:", result.data);
       localStorage.removeItem(DRAFT_STORAGE_KEY);
-
-      // Show success
       setSuccess(true);
-
-      // Refresh parent data
-      if (onSaved) {
-        await onSaved();
-      }
-
-      // Redirect after delay
-      setTimeout(() => {
-        navigate("/landlord");
-      }, 2000);
-
+      if (onSaved) await onSaved();
+      setTimeout(() => navigate("/landlord"), 2000);
     } catch (err) {
       console.error("Failed to add house:", err);
-      setError(err.message || "Failed to add property. Please check that the server is running.");
+      if (err.response && err.response.status === 401) {
+        setError("Session expired. Please login again.");
+        setIsAuthenticated(false);
+      } else {
+        setError(err.response?.data?.message || "Failed to add property. Please check that the server is running.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // SUCCESS SCREEN
+  if (!isAuthenticated) {
+    return (
+      <section className="section page-section">
+        <div className="container narrow" style={{ textAlign: "center", paddingTop: "80px" }}>
+          <div style={{ width: "80px", height: "80px", margin: "0 auto 25px", background: "#fef2f2", borderRadius: "50%", display: "grid", placeItems: "center" }}>
+            <X size={40} color="#dc2626" />
+          </div>
+          <h1 style={{ marginBottom: "15px", color: "#111827" }}>Session Expired</h1>
+          <p style={{ color: "#68736c", marginBottom: "30px" }}>Please login again to add a property.</p>
+          <Link to="/landlord/login" className="btn btn-primary btn-large">Login</Link>
+        </div>
+      </section>
+    );
+  }
+
   if (success) {
     return (
       <section className="section page-section">
         <div className="container narrow" style={{ textAlign: "center", paddingTop: "80px" }}>
-          <div style={{ 
-            width: "80px", 
-            height: "80px", 
-            margin: "0 auto 25px",
-            background: "#e9f6ed",
-            borderRadius: "50%",
-            display: "grid",
-            placeItems: "center"
-          }}>
+          <div style={{ width: "80px", height: "80px", margin: "0 auto 25px", background: "#e9f6ed", borderRadius: "50%", display: "grid", placeItems: "center" }}>
             <CheckCircle2 size={40} color="#176b3a" />
           </div>
           <h1 style={{ marginBottom: "15px", color: "#111827" }}>Property Added Successfully!</h1>
-          <p style={{ color: "#68736c", marginBottom: "30px", maxWidth: "400px", margin: "0 auto 30px" }}>
-            Your property has been published and is now visible to students searching for accommodation.
-          </p>
-          <Link to="/landlord" className="btn btn-primary btn-large">
-            Go to Dashboard
-          </Link>
+          <p style={{ color: "#68736c", marginBottom: "30px" }}>Your property has been published and is now visible to students.</p>
+          <Link to="/landlord" className="btn btn-primary btn-large">Go to Dashboard</Link>
         </div>
       </section>
     );
@@ -266,7 +255,6 @@ export default function AddHouse({ onSaved }) {
           <p>Give students enough information to decide whether the house fits their needs.</p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="form-error" style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
             <span style={{ color: "#dc2626" }}>⚠️</span>
@@ -274,47 +262,18 @@ export default function AddHouse({ onSaved }) {
           </div>
         )}
 
-        {/* Server Status Warning */}
-        {!error && (
-          <div style={{ 
-            padding: "12px 16px", 
-            background: "#f0f7f1", 
-            borderRadius: "10px", 
-            marginBottom: "20px",
-            fontSize: "13px",
-            color: "#365240"
-          }}>
-            <strong>Note:</strong> Make sure your backend server is running on port 5000 before submitting.
-          </div>
-        )}
-
         <form className="property-form" onSubmit={submit}>
-          {/* Basic Details */}
           <div className="form-section">
             <h2>Basic details</h2>
             <div className="form-grid">
               <label className="wide">
                 Property title *
-                <input
-                  name="title"
-                  value={form.title}
-                  onChange={change}
-                  placeholder="e.g. Clean bedsitter near Kangaru"
-                  required
-                />
+                <input name="title" value={form.title} onChange={change} placeholder="e.g. Clean bedsitter near Kangaru" required />
               </label>
-
               <label>
                 Estate / area *
-                <input
-                  name="estate"
-                  value={form.estate}
-                  onChange={change}
-                  placeholder="Kangaru"
-                  required
-                />
+                <input name="estate" value={form.estate} onChange={change} placeholder="Kangaru" required />
               </label>
-
               <label>
                 House type
                 <select name="type" value={form.type} onChange={change}>
@@ -326,42 +285,18 @@ export default function AddHouse({ onSaved }) {
                   <option>3 Bedroom</option>
                 </select>
               </label>
-
               <label>
                 Monthly rent (KSh) *
-                <input
-                  type="number"
-                  name="rent"
-                  value={form.rent}
-                  onChange={change}
-                  placeholder="5000"
-                  min="0"
-                  required
-                />
+                <input type="number" name="rent" value={form.rent} onChange={change} placeholder="5000" min="0" required />
               </label>
-
               <label>
                 Deposit (KSh)
-                <input
-                  type="number"
-                  name="deposit"
-                  value={form.deposit}
-                  onChange={change}
-                  placeholder="5000"
-                  min="0"
-                />
+                <input type="number" name="deposit" value={form.deposit} onChange={change} placeholder="5000" min="0" />
               </label>
-
               <label>
                 Approx. distance
-                <input
-                  name="distance"
-                  value={form.distance}
-                  onChange={change}
-                  placeholder="1.2 km from university"
-                />
+                <input name="distance" value={form.distance} onChange={change} placeholder="1.2 km from university" />
               </label>
-
               <label>
                 Availability
                 <select name="status" value={form.status} onChange={change}>
@@ -369,72 +304,35 @@ export default function AddHouse({ onSaved }) {
                   <option>Occupied</option>
                 </select>
               </label>
-
               <label>
                 Rooms
-                <input
-                  type="number"
-                  name="rooms"
-                  value={form.rooms}
-                  onChange={change}
-                  min="1"
-                />
+                <input type="number" name="rooms" value={form.rooms} onChange={change} min="1" />
               </label>
-
               <label>
                 Bathrooms
-                <input
-                  type="number"
-                  name="bathrooms"
-                  value={form.bathrooms}
-                  onChange={change}
-                  min="1"
-                />
+                <input type="number" name="bathrooms" value={form.bathrooms} onChange={change} min="1" />
               </label>
-
               <label className="wide">
                 Landlord phone *
-                <input
-                  name="phone"
-                  value={form.phone}
-                  onChange={change}
-                  placeholder="0712 345 678"
-                  required
-                />
+                <input name="phone" value={form.phone} onChange={change} placeholder="0712 345 678" required />
               </label>
-
               <label className="wide">
                 Description *
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={change}
-                  rows="5"
-                  placeholder="Describe the compound, security, access, nearby services, rules, etc."
-                  required
-                />
+                <textarea name="description" value={form.description} onChange={change} rows="5" placeholder="Describe the compound, security, access, nearby services, rules, etc." required />
               </label>
             </div>
           </div>
 
-          {/* Property Photo */}
           <div className="form-section">
             <h2>Property photo *</h2>
             <p className="muted">Upload a clear photo of the property directly from your device.</p>
-
             {!imagePreview ? (
               <label className="photo-upload-box" htmlFor="house-image">
                 <ImagePlus size={38} />
                 <strong>Choose house image</strong>
                 <span>Click here to select an image from your device</span>
                 <small>JPG, PNG, WEBP • Maximum 5MB</small>
-                <input
-                  id="house-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  hidden
-                />
+                <input id="house-image" type="file" accept="image/*" onChange={handleImageChange} hidden />
               </label>
             ) : (
               <div className="photo-preview-wrapper">
@@ -443,19 +341,9 @@ export default function AddHouse({ onSaved }) {
                   <label className="btn btn-outline" htmlFor="change-house-image">
                     <ImagePlus size={16} />
                     Change image
-                    <input
-                      id="change-house-image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      hidden
-                    />
+                    <input id="change-house-image" type="file" accept="image/*" onChange={handleImageChange} hidden />
                   </label>
-                  <button
-                    type="button"
-                    className="btn btn-outline remove-photo-btn"
-                    onClick={removeImage}
-                  >
+                  <button type="button" className="btn btn-outline remove-photo-btn" onClick={removeImage}>
                     <X size={16} />
                     Remove image
                   </button>
@@ -464,17 +352,13 @@ export default function AddHouse({ onSaved }) {
             )}
           </div>
 
-          {/* Amenities */}
           <div className="form-section">
             <h2>Amenities</h2>
             <div className="amenity-tags">
               {amenities.map((amenity) => (
                 <span key={amenity}>
                   {amenity}
-                  <button
-                    type="button"
-                    onClick={() => setAmenities(amenities.filter((a) => a !== amenity))}
-                  >
+                  <button type="button" onClick={() => setAmenities(amenities.filter((a) => a !== amenity))}>
                     <X size={13} />
                   </button>
                 </span>
@@ -485,12 +369,7 @@ export default function AddHouse({ onSaved }) {
                 value={newAmenity}
                 onChange={(e) => setNewAmenity(e.target.value)}
                 placeholder="Add amenity..."
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addAmenity();
-                  }
-                }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAmenity(); }}}
               />
               <button type="button" className="btn btn-outline" onClick={addAmenity}>
                 <Plus size={16} />
@@ -499,21 +378,11 @@ export default function AddHouse({ onSaved }) {
             </div>
           </div>
 
-          {/* Form Actions */}
           <div className="form-actions">
-            <Link to="/landlord" className="btn btn-outline">
-              Cancel
-            </Link>
-            <button
-              className="btn btn-primary btn-large"
-              type="submit"
-              disabled={isSubmitting}
-            >
+            <Link to="/landlord" className="btn btn-outline">Cancel</Link>
+            <button className="btn btn-primary btn-large" type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
-                <>
-                  <Loader2 size={18} className="spin" />
-                  Publishing...
-                </>
+                <><Loader2 size={18} className="spin" /> Publishing...</>
               ) : (
                 "Publish property"
               )}
@@ -522,17 +391,9 @@ export default function AddHouse({ onSaved }) {
         </form>
 
         <style>{`
-          .spin {
-            animation: spin 1s linear infinite;
-          }
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          .form-actions button:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-          }
+          .spin { animation: spin 1s linear infinite; }
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          .form-actions button:disabled { opacity: 0.7; cursor: not-allowed; }
         `}</style>
       </div>
     </section>

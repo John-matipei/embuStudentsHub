@@ -1,7 +1,5 @@
-const API_URL = (
-  import.meta.env.VITE_API_URL ||
-  "https://embustudentshub.onrender.com"
-).replace(/\/$/, "");
+// FIXED: Default to localhost for local development
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // Get token from localStorage
 const getToken = () => localStorage.getItem('esh_token');

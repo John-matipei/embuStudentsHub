@@ -1,5 +1,5 @@
-//FROM HELLO WORLD TO A REAL PROGRAM INDEED YOU DID IT TO ME THANK YOU GOD
-import React from "react";
+// home.jsx
+import React, { useState, useEffect } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,9 +11,14 @@ import {
   Database,
   Lock,
   Server,
+  Phone,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import HouseCard from "../components/HouseCard";
+import axios from "axios";
+
+// CRITICAL: Ensure this matches your backend URL exactly
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const teamMembers = [
   {
@@ -74,7 +79,6 @@ const teamMembers = [
   }
 ];
 
-// Student areas near University of Embu - CORRECTED ORDER (closest to farthest)
 const studentAreas = [
   { name: "Baggik", distance: "0.3 km", time: "4 min walk", color: "#10b981" },
   { name: "Kangaru", distance: "0.8 km", time: "10 min walk", color: "#3b82f6" },
@@ -83,13 +87,111 @@ const studentAreas = [
   { name: "Kamiu", distance: "3.5 km", time: "42 min walk", color: "#ef4444" },
 ];
 
-export default function Home({ houses }) {
-  const vacant = houses.filter((h) => h.status === "Vacant");
+export default function Home() {
+  const [houses, setHouses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [serverStatus, setServerStatus] = useState("unknown");
+
+  useEffect(() => {
+    const fetchHouses = async () => {
+      try {
+        setError("");
+        setServerStatus("checking");
+        
+        // Attempt to fetch houses
+        const response = await axios.get(`${API_URL}/api/houses`);
+        
+        // Validate response data
+        if (!Array.isArray(response.data)) {
+          throw new Error("Invalid data format received from server");
+        }
+        
+        setHouses(response.data);
+        setServerStatus("ok");
+      } catch (err) {
+        console.error("Error fetching houses:", err);
+        
+        // Specific error handling
+        if (err.response) {
+          // Server responded with an error status (4xx, 5xx)
+          if (err.response.status === 500) {
+            setError("Server error occurred. The backend is running but encountered a database issue. Please check server logs.");
+          } else if (err.response.status === 403 || err.response.status === 401) {
+            setError("Access denied. You may not have permission to view this content.");
+          } else {
+            setError(`Server error: ${err.response.status}. Please try again later.`);
+          }
+        } else if (err.request) {
+          // Request was made but no response received
+          setError("Cannot connect to the server. Ensure the backend is running on port 5000.");
+        } else {
+          // Other errors
+          setError("An unexpected error occurred. Please try again.");
+        }
+        setServerStatus("error");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHouses();
+  }, []);
+
+  // Filter for valid vacant/available houses
+  const vacant = houses.filter((h) => 
+    h.status === "Vacant" || h.status === "available" || h.status === "Available"
+  );
   const featured = vacant.slice(0, 3);
 
-  // Split team into first 6 and last 1 for layout
   const firstSix = teamMembers.slice(0, 6);
   const lastOne = teamMembers.slice(6, 7);
+
+  if (loading) {
+    return (
+      <div className="container loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading available houses...</p>
+        <style>{`
+          .loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; }
+          .loading-spinner { width: 50px; height: 50px; border: 4px solid #e0e7e1; border-top-color: #176b3a; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container error-container">
+        <h2 style={{ color: "#b91c1c", marginBottom: "15px" }}>Connection Error</h2>
+        <p style={{ color: "#68736c", marginBottom: "25px" }}>{error}</p>
+        <div style={{ marginBottom: "20px" }}>
+          <p style={{ fontSize: "14px", color: "#89938d" }}>
+            If you are the developer, check the following:
+          </p>
+          <ul style={{ fontSize: "13px", color: "#68736c", lineHeight: "1.6" }}>
+            <li>1. Is the backend server running on port 5000?</li>
+            <li>2. Is the database connected and tables created?</li>
+            <li>3. Check the backend terminal for specific error logs.</li>
+          </ul>
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="btn btn-primary"
+        >
+          Try Again
+        </button>
+        <button 
+          onClick={() => window.open('http://localhost:5000/api/health', '_blank')}
+          className="btn btn-outline"
+          style={{ marginLeft: '10px' }}
+        >
+          Test Backend Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -207,12 +309,6 @@ export default function Home({ houses }) {
               />
             ))}
           </div>
-
-          {!featured.length && (
-            <div className="empty">
-              No vacant houses have been listed yet.
-            </div>
-          )}
         </div>
       </section>
 
@@ -346,7 +442,7 @@ export default function Home({ houses }) {
             />
 
             <Step
-              icon={<PhoneIcon />}
+              icon={<Phone />}
               title="Contact"
               text="Get the landlord contact and arrange a viewing."
             />
@@ -368,28 +464,5 @@ function Step({ icon, title, text }) {
 
       <p>{text}</p>
     </div>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <rect
-        x="6"
-        y="2"
-        width="12"
-        height="20"
-        rx="2"
-      />
-
-      <path d="M11 18h2" />
-    </svg>
   );
 }

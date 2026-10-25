@@ -1,3 +1,4 @@
+// src/pages/AdminDashboard.jsx
 import React, { useState, useEffect } from "react";
 import { 
   Users, Home, Calendar, CheckCircle, XCircle, 
@@ -5,7 +6,9 @@ import {
   LogOut, ArrowLeft
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { getAllLandlords, getHouses, getBookings, checkAuthStatus } from "../services/api";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminDashboard() {
   const [landlords, setLandlords] = useState([]);
@@ -25,56 +28,73 @@ export default function AdminDashboard() {
 
   const checkAccess = async () => {
     try {
-      // Check if logged in
-      const token = localStorage.getItem("esh_token");
+      // Check if logged in - use 'token' not 'esh_token'
+      const token = localStorage.getItem("token");
       if (!token) {
+        console.log("No token found, redirecting to login");
         navigate("/admin/login");
         return;
       }
 
-      // Verify admin status
-      const auth = await checkAuthStatus();
-      const email = auth.landlord?.email;
-      
-      if (email !== "landlord@embu.com" && email !== "admin@embu.com") {
+      // Verify admin status via API
+      const response = await axios.get(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const user = response.data.landlord;
+      console.log("Current user:", user);
+
+      // Check if role is admin
+      if (user.role !== 'admin') {
+        console.log("User is not admin, role:", user.role);
         setError("Access denied. Admin privileges required.");
         setLoading(false);
         return;
       }
       
       setIsAdmin(true);
-      await loadData();
+      await loadData(token);
     } catch (err) {
+      console.error("Auth error:", err);
       // Token invalid or expired
-      localStorage.clear();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       navigate("/admin/login");
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (token) => {
     try {
       setLoading(true);
       setError("");
 
-      // Load all data in parallel
-      const [landlordsData, housesData, bookingsData] = await Promise.all([
-        getAllLandlords(),
-        getHouses(),
-        getBookings().catch(() => [])
+      // Load all data in parallel with auth headers
+      const [landlordsRes, housesRes, bookingsRes] = await Promise.all([
+        axios.get(`${API_URL}/api/admin/landlords`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/api/houses`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/api/bookings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => ({ data: [] }))
       ]);
 
-      setLandlords(landlordsData);
-      setHouses(housesData);
-      setBookings(bookingsData);
+      setLandlords(landlordsRes.data);
+      setHouses(housesRes.data);
+      setBookings(bookingsRes.data);
     } catch (err) {
-      setError(err.message || "Failed to load data");
+      console.error("Load data error:", err);
+      setError(err.response?.data?.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/admin/login");
   };
 
@@ -111,6 +131,23 @@ export default function AdminDashboard() {
       <div className="loading-container">
         <RefreshCw className="spin" size={32} />
         <p>Loading admin dashboard...</p>
+        <style>{`
+          .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            gap: 20px;
+          }
+          .spin {
+            animation: spin 1s linear infinite;
+          }
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -125,6 +162,31 @@ export default function AdminDashboard() {
           <LogOut size={16} />
           Logout
         </button>
+        <style>{`
+          .error-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            gap: 20px;
+            padding: 40px;
+          }
+          .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .btn-primary {
+            background: #3b82f6;
+            color: white;
+          }
+        `}</style>
       </div>
     );
   }
@@ -141,7 +203,7 @@ export default function AdminDashboard() {
           <p>System Overview - Landlords, Houses & Bookings</p>
         </div>
         <div className="header-actions">
-          <button onClick={loadData} className="btn btn-outline">
+          <button onClick={() => loadData(localStorage.getItem("token"))} className="btn btn-outline">
             <RefreshCw size={16} />
             Refresh
           </button>
@@ -222,7 +284,7 @@ export default function AdminDashboard() {
                 <th>Phone</th>
                 <th>Houses Posted</th>
                 <th>Total Bookings</th>
-                <th>Account Status</th>
+                <th>Role</th>
               </tr>
             </thead>
             <tbody>
@@ -237,8 +299,8 @@ export default function AdminDashboard() {
                     <td>
                       <div className="landlord-info">
                         <strong>{landlord.name || 'N/A'}</strong>
-                        {landlord.is_default_account && (
-                          <span className="badge default">Default</span>
+                        {landlord.role === 'admin' && (
+                          <span className="badge admin">Admin</span>
                         )}
                       </div>
                     </td>
@@ -251,8 +313,8 @@ export default function AdminDashboard() {
                       <span className="badge bookings">{totalBookings}</span>
                     </td>
                     <td>
-                      <span className={`badge ${landlord.password_changed ? 'active' : 'pending'}`}>
-                        {landlord.password_changed ? 'Active' : 'Pending Setup'}
+                      <span className={`badge ${landlord.role}`}>
+                        {landlord.role || 'landlord'}
                       </span>
                     </td>
                   </tr>
@@ -540,9 +602,14 @@ export default function AdminDashboard() {
           font-weight: 500;
         }
 
-        .badge.default {
+        .badge.admin {
           background: #dbeafe;
           color: #1e40af;
+        }
+
+        .badge.landlord {
+          background: #d1fae5;
+          color: #065f46;
         }
 
         .badge.houses {
@@ -553,11 +620,6 @@ export default function AdminDashboard() {
         .badge.bookings {
           background: #fef3c7;
           color: #92400e;
-        }
-
-        .badge.active {
-          background: #d1fae5;
-          color: #065f46;
         }
 
         .badge.pending {
@@ -686,30 +748,6 @@ export default function AdminDashboard() {
           font-size: 14px;
         }
 
-        .loading-container, .error-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 400px;
-          gap: 20px;
-        }
-
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .small {
-          font-size: 12px;
-          color: #6b7280;
-          margin: 2px 0;
-        }
-
         .btn {
           padding: 10px 20px;
           border-radius: 8px;
@@ -721,28 +759,32 @@ export default function AdminDashboard() {
           gap: 8px;
           font-size: 14px;
           text-decoration: none;
+          background: white;
+          color: #374151;
+          border: 1px solid #e5e7eb;
         }
 
         .btn-outline {
           background: white;
           border: 1px solid #e5e7eb;
-          color: #374151;
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
         }
 
         .btn-danger {
           background: #dc2626;
           color: white;
+          border-color: #dc2626;
         }
 
         .landlord-info {
           display: flex;
           flex-direction: column;
           gap: 4px;
+        }
+
+        .small {
+          font-size: 12px;
+          color: #6b7280;
+          margin: 2px 0;
         }
       `}</style>
     </div>
