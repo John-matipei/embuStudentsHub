@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  BrowserRouter,
+  HashRouter, // ✅ CHANGED: BrowserRouter → HashRouter
   Routes,
   Route,
 } from "react-router-dom";
 import ChangePassword from "./pages/ChangePassword";
 import AdminDashboard from "./pages/AdminDashboard";
-import AdminLogin from "./pages/AdminLogin"; // NEW: Admin Login Page
+import AdminLogin from "./pages/AdminLogin";
 import Navbar from "./components/Navbar";
 import AIChatAgent from "./components/AIChatAgent";
 
@@ -22,7 +22,7 @@ import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter> {/* ✅ CHANGED: BrowserRouter → HashRouter */}
       <div className="app">
         <Navbar />
 
@@ -41,10 +41,10 @@ export default function App() {
             <Route path="/landlord/add" element={<AddHouse />} />
             <Route path="/landlord/change-password" element={<ChangePassword />} />
             
-            {/* Admin routes - NEW */}
+            {/* Admin routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} /> {/* Redirect /admin to dashboard */}
+            <Route path="/admin" element={<AdminDashboard />} />
             
             {/* Catch all */}
             <Route path="*" element={<NotFound />} />
@@ -52,7 +52,7 @@ export default function App() {
         </main>
 
         {/* Hide AI chat on landlord and admin pages */}
-        {!window.location.pathname.startsWith('/landlord') && !window.location.pathname.startsWith('/admin') && <AIChatAgent />}
+        {!window.location.hash.startsWith('#/landlord') && !window.location.hash.startsWith('#/admin') && <AIChatAgent />}
 
         <footer className="footer">
           <div className="container footer-inner">
@@ -66,6 +66,6 @@ export default function App() {
           </div>
         </footer>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
