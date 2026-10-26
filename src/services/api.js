@@ -1,69 +1,14 @@
-// FIXED: Default to localhost for local development
+// CRITICAL: This reads the URL from your environment variables.
+// You MUST set VITE_API_URL in your frontend deployment settings.
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// Get token from localStorage
-const getToken = () => localStorage.getItem('esh_token');
-
-// Store auth data
-export const setAuth = (token, email) => {
-  localStorage.setItem('esh_token', token);
-  localStorage.setItem('esh_landlord_email', email);
-  localStorage.setItem('esh_landlord_session', 'active');
-};
-
-// Clear auth data
-export const clearAuth = () => {
-  localStorage.removeItem('esh_token');
-  localStorage.removeItem('esh_landlord_email');
-  localStorage.removeItem('esh_landlord_session');
-};
-
-// Fetch with timeout helper
-async function fetchWithTimeout(url, options = {}, timeout = 10000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    if (error.name === 'AbortError') {
-      throw new Error('Request timed out');
-    }
-    throw error;
-  }
-}
-
-// Fetch with authentication
-async function fetchWithAuth(url, options = {}, timeout = 10000) {
-  const token = getToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` }),
-    ...options.headers
-  };
-  
-  const response = await fetchWithTimeout(url, { ...options, headers }, timeout);
-  
-  // Handle 401 - token expired or invalid
-  if (response.status === 401) {
-    clearAuth();
-    throw new Error('Session expired. Please login again.');
-  }
-  
-  return response;
-}
+console.log('API URL configured:', API_URL); // Debug log
 
 // ========== AUTH API ==========
 
 // Login landlord
 export async function loginLandlord(email, password) {
-  const response = await fetchWithTimeout(`${API_URL}/api/auth/login`, {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -76,13 +21,39 @@ export async function loginLandlord(email, password) {
   
   const data = await response.json();
   
-  // Store auth data
-  setAuth(data.token, data.landlord.email);
+  // Store auth data using the NEW, correct keys
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("user", JSON.stringify(data.landlord));
+  
+  // Clear any old keys to prevent confusion
+  localStorage.removeItem("esh_token");
+  localStorage.removeItem("esh_landlord_email");
+  localStorage.removeItem("esh_landlord_session");
   
   return data;
 }
 
-// Change password (first login)
+// Change password (first login) - Requires auth
+async function fetchWithAuth(url, options = {}) {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers
+  };
+  
+  const response = await fetch(url, { ...options, headers });
+  
+  // Handle 401 - token expired or invalid
+  if (response.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    throw new Error('Session expired. Please login again.');
+  }
+  
+  return response;
+}
+
 export async function changePassword(newPassword, force = false) {
   const response = await fetchWithAuth(`${API_URL}/api/auth/change-password`, {
     method: 'POST',
@@ -99,6 +70,11 @@ export async function changePassword(newPassword, force = false) {
 
 // Check auth status
 export async function checkAuthStatus() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
   const response = await fetchWithAuth(`${API_URL}/api/auth/me`);
   
   if (!response.ok) {
@@ -113,7 +89,7 @@ export async function checkAuthStatus() {
 // GET all houses (public)
 export async function getHouses() {
   try {
-    const response = await fetchWithTimeout(`${API_URL}/api/houses`);
+    const response = await fetch(`${API_URL}/api/houses`);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Server error' }));
@@ -129,7 +105,7 @@ export async function getHouses() {
     return data;
   } catch (error) {
     if (error.message === 'Failed to fetch') {
-      throw new Error('Cannot connect to server. Make sure the backend is running on port 5000.');
+      throw new Error('Cannot connect to server. Make sure the backend is running.');
     }
     throw error;
   }
@@ -184,7 +160,7 @@ export async function deleteHouse(id) {
 // Create booking (public)
 export async function createBooking(bookingData) {
   try {
-    const response = await fetchWithTimeout(`${API_URL}/api/bookings`, {
+    const response = await fetch(`${API_URL}/api/bookings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -256,7 +232,7 @@ export async function updateBooking(id, changes) {
 // Health check
 export async function checkServerHealth() {
   try {
-    const response = await fetchWithTimeout(`${API_URL}/api/health`);
+    const response = await fetch(`${API_URL}/api/health`);
     if (!response.ok) {
       throw new Error('Server health check failed');
     }
@@ -266,18 +242,15 @@ export async function checkServerHealth() {
   }
 }
 
-// AI Chat (public)
-export async function sendChatMessage(message, conversationHistory = []) {
+// AI Chat (public) - FIXED: Only sends the message, not history
+export async function sendChatMessage(message) {
   try {
-    const response = await fetchWithTimeout(`${API_URL}/api/chat`, {
+    const response = await fetch(`${API_URL}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        message,
-        history: conversationHistory 
-      }),
+      body: JSON.stringify({ message }), // Only send the message
     });
     
     if (!response.ok) {

@@ -52,8 +52,15 @@ export default function AIChatAgent() {
     setIsLoading(true);
 
     try {
+      console.log("Sending message to AI:", userMessage);
       const response = await sendChatMessage(userMessage, messages);
       
+      console.log("Received response from AI:", response);
+      
+      if (!response.message) {
+        throw new Error("Invalid response from server");
+      }
+
       setMessages((prev) => [
         ...prev,
         { 
@@ -63,11 +70,12 @@ export default function AIChatAgent() {
         },
       ]);
     } catch (error) {
+      console.error("Chat error:", error);
       setMessages((prev) => [
         ...prev,
         { 
           role: "assistant", 
-          content: "I'm sorry, I'm having trouble connecting right now. Please try again or contact us directly.", 
+          content: "I'm sorry, I'm having trouble connecting right now. Please check your internet connection or try again later.", 
           timestamp: new Date().toISOString() 
         },
       ]);
@@ -224,7 +232,7 @@ export default function AIChatAgent() {
           </div>
         </div>
       )}
-
+      
       <style>{`
         .ai-chat-button {
           position: fixed;

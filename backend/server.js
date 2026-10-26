@@ -11,6 +11,10 @@ const path = require('path');
 // 1. DATABASE CONNECTION CONFIGURATION
 // ==========================================
 
+// ==========================================
+// 1. DATABASE CONNECTION CONFIGURATION
+// ==========================================
+
 const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
@@ -20,13 +24,25 @@ if (missingVars.length > 0) {
 }
 
 let sslConfig = false;
-if (process.env.DB_SSL_CA && process.env.DB_SSL_CA !== '') {
+
+// Check if running in production (Render)
+const isProduction = process.env.RENDER_EXTERNAL_URL || process.env.NODE_ENV === 'production';
+
+if (isProduction) {
+  // Production (Render): Enable SSL without file verification
+  // This is required for Aiven but we skip CA file verification
+  sslConfig = {
+    rejectUnauthorized: false
+  };
+  console.log('✓ Production mode: SSL enabled (rejectUnauthorized: false) for Aiven');
+} else if (process.env.DB_SSL_CA && process.env.DB_SSL_CA !== '') {
+  // Local development with SSL certificate file
   if (!fs.existsSync(process.env.DB_SSL_CA)) {
     console.error(`❌ CRITICAL ERROR: SSL Certificate file not found at ${process.env.DB_SSL_CA}`);
     process.exit(1);
   }
   sslConfig = { ca: fs.readFileSync(process.env.DB_SSL_CA) };
-  console.log('✓ SSL Certificate loaded.');
+  console.log('✓ SSL Certificate loaded for local development.');
 } else {
   console.log('⚠️ SSL not configured. Using standard connection (local development only).');
 }
