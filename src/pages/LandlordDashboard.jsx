@@ -9,6 +9,7 @@ import {
   Loader2,
   Calendar,
   ArrowRight,
+  DollarSign,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -77,6 +78,13 @@ export default function LandlordDashboard() {
   const userStr = localStorage.getItem("user");
   const email = userStr ? JSON.parse(userStr).email : "";
 
+  // Placeholder for payment logic
+  const handlePayBill = () => {
+    alert("Pay Now clicked.\n\nConnect this to your Python payment backend.");
+    // Example: Navigate to a payment page
+    // navigate("/landlord/pay");
+  };
+
   const toggleAvailability = async (house) => {
     setUpdatingId(house.id);
     setError("");
@@ -141,6 +149,10 @@ export default function LandlordDashboard() {
     }
   };
 
+  const handlePayBillItem = (house) => {
+    alert(`Pay bill for: ${house.title}\n\nConnect this to your Python payment backend.`);
+  };
+
   const viewHouseBookings = (houseId) => {
     navigate(`/landlord/bookings?houseId=${houseId}`);
   };
@@ -192,6 +204,10 @@ export default function LandlordDashboard() {
           </div>
 
           <div className="dashboard-head-actions">
+            <button onClick={handlePayBill} className="btn btn-outline pay-btn">
+              <DollarSign size={18} />
+              Pay Now
+            </button>
             <button onClick={viewAllBookings} className="btn btn-outline">
               <Calendar size={18} />
               View Bookings
@@ -266,6 +282,14 @@ export default function LandlordDashboard() {
                 </button>
 
                 <button
+                  title="Pay bill"
+                  className="pay-bill-btn"
+                  onClick={() => handlePayBillItem(house)}
+                >
+                  <DollarSign size={17} />
+                </button>
+
+                <button
                   title="Toggle availability"
                   onClick={() => toggleAvailability(house)}
                   disabled={updatingId === house.id || deletingId === house.id}
@@ -333,6 +357,10 @@ export default function LandlordDashboard() {
         .row-actions .danger:hover:not(:disabled) { background: #fef2f2; }
         .row-actions .bookings-btn { color: #2563eb; border-color: #dbeafe; }
         .row-actions .bookings-btn:hover { background: #eff6ff; border-color: #3b82f6; }
+        .row-actions .pay-bill-btn { color: #059669; border-color: #a7f3d0; }
+        .row-actions .pay-bill-btn:hover { background: #ecfdf5; border-color: #10b981; }
+        .pay-btn { color: #2563eb; border-color: #7a9de8; font-weight: 500; }
+        .pay-btn:hover { background: #00ff00; border-color: #30ef66; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .property-row img { width: 75px; height: 58px; object-fit: cover; border-radius: 10px; background: #e5e7eb; }
