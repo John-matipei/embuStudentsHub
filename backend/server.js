@@ -601,7 +601,8 @@ app.post("/api/houses", requireAuth, async (req, res) => {
       house: { id: houseId, ...req.body }
     });
   } catch (error) {
-    res.status(500)({ message: error.message });
+    // FIXED: Added .json() method
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -836,7 +837,7 @@ function getAIResponse(message) {
 }
 
 function randomResponse(responses) {
-  return responses[Math.floor(Math.random * responses.length)];
+  return responses[Math.floor(Math.random() * responses.length)]; // Fixed: Added () to Math.random
 }
 
 app.post("/api/chat", async (req, res) => {
