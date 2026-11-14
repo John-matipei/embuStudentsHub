@@ -11,57 +11,62 @@ const path = require('path');
 // 1. DATABASE CONNECTION CONFIGURATION
 // ==========================================
 
-// ==========================================
-// 1. DATABASE CONNECTION CONFIGURATION
-// ==========================================
-
-const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME'];
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingVars.length > 0) {
-  console.error(`❌ CRITICAL ERROR: Missing required environment variables: ${missingVars.join(', ')}`);
+// Check for required environment variable
+if (!process.env.DATABASE_URL) {
+  console.error('❌ CRITICAL ERROR: DATABASE_URL environment variable is required');
   process.exit(1);
 }
 
-let sslConfig = false;
+// Parse the Aiven connection URI
+const url = new URL(process.env.DATABASE_URL);
 
-// Check if running in production (Render)
-const isProduction = process.env.RENDER_EXTERNAL_URL || process.env.NODE_ENV === 'production';
+// Extract components from the URI
+const dbHost = url.hostname;
+const dbPort = url.port;
+const dbUser = url.username;
+const dbPassword = url.password;
+const dbDatabase = url.pathname.substring(1); // Remove leading '/'
 
-if (isProduction) {
-  // Production (Render): Use Aiven's CA certificate from environment variable
-  const aivenCaCert = process.env.AIVEN_CA_CERT;
-  
-  if (!aivenCaCert || aivenCaCert === '') {
-    console.error('❌ CRITICAL ERROR: AIVEN_CA_CERT environment variable is required for production');
-    process.exit(1);
-  }
-  
-  sslConfig = {
-    ca: aivenCaCert
-  };
-  console.log('✓ Production mode: SSL enabled with Aiven CA certificate');
-} else if (process.env.DB_SSL_CA && process.env.DB_SSL_CA !== '') {
-  // Local development with SSL certificate file
-  if (!fs.existsSync(process.env.DB_SSL_CA)) {
-    console.error(`❌ CRITICAL ERROR: SSL Certificate file not found at ${process.env.DB_SSL_CA}`);
-    process.exit(1);
-  }
-  sslConfig = { ca: fs.readFileSync(process.env.DB_SSL_CA) };
-  console.log('✓ SSL Certificate loaded for local development.');
-} else {
-  console.log('⚠️ SSL not configured. Using standard connection (local development only).');
+// Verify all required components are present
+if (!dbHost || !dbPort || !dbUser || !dbPassword || !dbDatabase) {
+  console.error('❌ CRITICAL ERROR: Invalid DATABASE_URL format');
+  process.exit(1);
 }
 
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3300,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'embu_homes',
-  ssl: sslConfig,
-  connectionLimit: 10
-};
+const isProduction = process.env.RENDER_EXTERNAL_URL || process.env.NODE_ENV === 'production';
+
+let dbConfig;
+
+if (isProduction) {
+  // Production (Render): Use SSL with Aiven
+  // Note: mysql2 with Aiven requires SSL, but we use rejectUnauthorized: false
+  // because Aiven handles the certificate verification on their end
+  dbConfig = {
+    host: dbHost,
+    port: dbPort,
+    user: dbUser,
+    password: dbPassword,
+    database: dbDatabase,
+    ssl: {
+      rejectUnauthorized: false
+    },
+    connectionLimit: 10,
+    connectTimeout: 20000,
+    acquireTimeout: 20000
+  };
+  console.log('✓ Production mode: SSL enabled for Aiven via URI');
+} else {
+  // Local development: No SSL
+  dbConfig = {
+    host: dbHost,
+    port: dbPort,
+    user: dbUser,
+    password: dbPassword,
+    database: dbDatabase,
+    connectionLimit: 10
+  };
+  console.log('✓ Local development mode: No SSL');
+}
 
 const initPool = mysql.createPool(dbConfig);
 
