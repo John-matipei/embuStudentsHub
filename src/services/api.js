@@ -1,6 +1,16 @@
+// api.js
+
 // CRITICAL: This reads the URL from your environment variables.
-// You MUST set VITE_API_URL in your frontend deployment settings.
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// You MUST set VITE_API_URL in your frontend deployment settings to:
+// https://embustudentshub.onrender.com
+const API_URL = import.meta.env.VITE_API_URL;
+
+// Validate that the API URL is configured
+if (!API_URL) {
+  console.error('CRITICAL ERROR: VITE_API_URL is not set. The frontend cannot function without a valid backend URL.');
+  // In a real production build, you might want to throw an error here to prevent the app from loading.
+  // throw new Error('VITE_API_URL is missing. Please configure your environment variables.');
+}
 
 console.log('API URL configured:', API_URL); // Debug log
 
