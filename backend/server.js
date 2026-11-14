@@ -29,12 +29,18 @@ let sslConfig = false;
 const isProduction = process.env.RENDER_EXTERNAL_URL || process.env.NODE_ENV === 'production';
 
 if (isProduction) {
-  // Production (Render): Enable SSL without file verification
-  // This is required for Aiven but we skip CA file verification
+  // Production (Render): Use Aiven's CA certificate from environment variable
+  const aivenCaCert = process.env.AIVEN_CA_CERT;
+  
+  if (!aivenCaCert || aivenCaCert === '') {
+    console.error('❌ CRITICAL ERROR: AIVEN_CA_CERT environment variable is required for production');
+    process.exit(1);
+  }
+  
   sslConfig = {
-    rejectUnauthorized: false
+    ca: aivenCaCert
   };
-  console.log('✓ Production mode: SSL enabled (rejectUnauthorized: false) for Aiven');
+  console.log('✓ Production mode: SSL enabled with Aiven CA certificate');
 } else if (process.env.DB_SSL_CA && process.env.DB_SSL_CA !== '') {
   // Local development with SSL certificate file
   if (!fs.existsSync(process.env.DB_SSL_CA)) {
